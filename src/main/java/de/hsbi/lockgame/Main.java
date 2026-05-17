@@ -23,10 +23,10 @@ public class Main {
             var panel = new GamePanel(engine.state(), new Java2DRenderer());
 
             // State: Engine -> UI: GamePanel.update(GameState)
-            engine.setGamePanel(panel);
+engine.addObserver(panel);
 
-            // Input/Direction: UI -> Engine: GameEngine.update(Direction)
-            panel.setGameEngine(engine);
+	    // Input/Direction: UI -> Engine: GameEngine.update(Direction)
+panel.addObserver(engine);
 
             var frame = new JFrame("LockSnake - Prog2");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

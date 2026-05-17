@@ -3,17 +3,27 @@ package de.hsbi.lockgame.ui;
 import de.hsbi.lockgame.logic.GameEngine;
 import de.hsbi.lockgame.logic.GameState;
 import de.hsbi.lockgame.model.Direction;
+import de.hsbi.lockgame.observer.GameObservable;
+import de.hsbi.lockgame.observer.GameObserver;
 import de.hsbi.lockgame.settings.GameConstants;
 import de.hsbi.lockgame.settings.InputConstants;
 import de.hsbi.lockgame.ui.render.GameRenderer;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
-import javax.swing.*;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.AbstractAction;
+import javax.swing.JComponent;
+import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 
-public class GamePanel extends JPanel {
+public class GamePanel extends JPanel implements GameObserver<GameState>, GameObservable<Direction> {
   private GameState state;
   private final GameRenderer renderer;
-  private GameEngine gameEngine;
+  private final List<GameObserver<Direction>> observers = new ArrayList<>();
 
   public GamePanel(GameState initialState, GameRenderer renderer) {
     this.state = initialState;
@@ -29,38 +39,50 @@ public class GamePanel extends JPanel {
     InputConstants.BINDINGS.forEach(this::setupKeyBindings);
   }
 
+  @Override
   public void update(GameState newState) {
     this.state = newState;
     repaint();
   }
 
+  @Override
+  public void addObserver(GameObserver<Direction> observer) {
+    if (observer != null) {
+      observers.add(observer);
+    }
+  }
+
+  @Override
+  public void removeObserver(GameObserver<Direction> observer) {
+    observers.remove(observer);
+  }
+
   public void setGameEngine(GameEngine engine) {
-    this.gameEngine = engine;
+    addObserver(engine);
   }
 
   private void setupKeyBindings(Direction direction, Iterable<Integer> keyCodes) {
-    // Swing separates two layers: multiple keystrokes can be mapped to a single Action
-    // 1. KeyStroke → Name
     var inputMap = getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
-    // 2. Name → Action
     var actionMap = getActionMap();
 
-    // shared name per direction
     var actionKey = "move_" + direction.name();
 
-    // shared Swing Action per direction
     var swingAction =
         new AbstractAction() {
           @Override
           public void actionPerformed(ActionEvent e) {
-            gameEngine.update(direction);
+            notifyObservers(direction);
           }
         };
 
-    // 1. register KeyStroke → Name
     keyCodes.forEach(keyCode -> inputMap.put(KeyStroke.getKeyStroke(keyCode, 0), actionKey));
-    // 2. register Name → Action
     actionMap.put(actionKey, swingAction);
+  }
+
+  private void notifyObservers(Direction direction) {
+    for (GameObserver<Direction> observer : observers) {
+      observer.update(direction);
+    }
   }
 
   @Override

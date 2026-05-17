@@ -3,12 +3,15 @@ package de.hsbi.lockgame.logic;
 import de.hsbi.lockgame.model.Direction;
 import de.hsbi.lockgame.model.Level;
 import de.hsbi.lockgame.model.Snake;
+import de.hsbi.lockgame.observer.GameObservable;
+import de.hsbi.lockgame.observer.GameObserver;
 import de.hsbi.lockgame.ui.GamePanel;
+import java.util.ArrayList;
 import java.util.List;
 
-public final class GameEngine {
+public final class GameEngine implements GameObserver<Direction>, GameObservable<GameState> {
   private GameState state;
-  private GamePanel panel;
+  private final List<GameObserver<GameState>> observers = new ArrayList<>();
 
   public GameEngine(Level level) {
     this.state =
@@ -24,27 +27,40 @@ public final class GameEngine {
     return state;
   }
 
-  public void setGamePanel(GamePanel panel) {
-    this.panel = panel;
+  @Override
+  public void addObserver(GameObserver<GameState> observer) {
+    if (observer != null) {
+      observers.add(observer);
+    }
   }
 
+  @Override
+  public void removeObserver(GameObserver<GameState> observer) {
+    observers.remove(observer);
+  }
+
+  public void setGamePanel(GamePanel panel) {
+    addObserver(panel);
+  }
+
+  @Override
   public void update(Direction d) {
-    if (d == null) {
+    if (d == null || !state.status().isRunning()) {
       return;
     }
 
     state = new GameState(state.level(), state.snake(), state.pins(), state.status(), d);
-    notifyPanel();
+    notifyObservers();
   }
 
   public void tick() {
     state = state.tick();
-    notifyPanel();
+    notifyObservers();
   }
 
-  private void notifyPanel() {
-    if (panel != null) {
-      panel.update(state);
+  private void notifyObservers() {
+    for (GameObserver<GameState> observer : observers) {
+      observer.update(state);
     }
   }
 }
